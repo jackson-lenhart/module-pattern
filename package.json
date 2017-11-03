@@ -1,0 +1,22 @@
+{
+  "name": "module-pattern",
+  "version": "1.0.0",
+  "description": "experimenting with the module pattern",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jackson-lenhart/module-pattern.git"
+  },
+  "author": "Jackson Lenhart",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jackson-lenhart/module-pattern/issues"
+  },
+  "homepage": "https://github.com/jackson-lenhart/module-pattern#readme",
+  "dependencies": {
+    "colors": "^1.1.2"
+  }
+}
