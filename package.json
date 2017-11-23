@@ -4,7 +4,7 @@
   "description": "experimenting with the module pattern",
   "main": "index.js",
   "scripts": {
-    "test": "test"
+    "test": "node tests.js"
   },
   "repository": {
     "type": "git",
@@ -17,6 +17,11 @@
   },
   "homepage": "https://github.com/jackson-lenhart/module-pattern#readme",
   "dependencies": {
-    "colors": "^1.1.2"
+    "bcrypt": "^1.0.3",
+    "body-parser": "^1.18.2",
+    "colors": "^1.1.2",
+    "express": "^4.16.2",
+    "passport": "^0.4.0",
+    "path": "^0.12.7"
   }
 }

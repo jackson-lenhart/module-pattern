@@ -1,35 +1,25 @@
 "use strict";
 
-const colors = require("colors");
-
 module.exports = (() => {
   return {
-    reverseArr: arr => {
-      if (!Array.isArray(arr)) {
-        console.log("Error, invalid type");
-        return;
+    fibonacci: (num) => {
+      const seq = [];
+      seq[0] = 0;
+      seq[1] = 1;
+      for (let i = 2; i < num; i++) {
+        seq[i] = seq[i - 1] + seq[i - 2];
       }
 
-      let j = arr.length - 1;
-      const newArr = [];
-      for (let i = 0; i < arr.length; i++) {
-        newArr.push(arr[j]);
-        j--;
-      }
-      return newArr;
+      return seq;
     },
-    fizzBuzz: arr => {
-      return arr.map(el => {
-        if (el % 3 === 0 && el % 5 === 0) {
-          console.log("FizzBuzz".green);
-        } else if (el % 3 === 0) {
-          console.log("Fizz".blue);
-        } else if (el % 5 === 0) {
-          console.log("Buzz".magenta);
-        } else {
-          console.log(el.toString().red);
+    substrings: (str) => {
+      const subs = [];
+      for (let i = 0; i < str.length; i++) {
+        for (let j = i + 1; j < str.length + 1; j++) {
+          subs.push(str.slice(i, j));
         }
-      });
+      }
+      return subs;
     }
   };
 })();
