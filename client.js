@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = ((http) => {
+module.exports = ((http, fs) => {
   return {
     createUser: (user, password) => {
       const userRe = /^[-\w\.\$@\*\!]{1,30}$/;
@@ -173,6 +173,31 @@ module.exports = ((http) => {
       });
 
       req.end();
+    },
+    uploadImage: () => {
+      const img = fs.readFileSync("swirling-galaxy.jpg");
+      console.log(img);
+
+      const options = {
+        hostname: "localhost",
+        port: 4567,
+        path: "/upload",
+        method: "POST",
+        headers: {
+          "Content-Type": "image/jpeg",
+          "Content-Length": Buffer.byteLength(img)
+        }
+      }
+
+      const req = http.request(options, (res) => {
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          console.log("Response: " + chunk);
+        });
+      });
+
+      req.write(img);
+      req.end();
     }
   };
-})(require("http"));
+})(require("http"), require("fs"));

@@ -4,6 +4,7 @@
 const express = require("express");
 const fs = require("fs");
 const crypto = require("crypto");
+const bodyParser = require("body-parser");
 
 /* relative dependencies */
 const client = require("./client");
@@ -22,7 +23,7 @@ app.post("/:user/:password/", (req, res) => {
     res.send(`You are already signed in as ${STATE.currentUser}`);
     return;
   }
-  
+
   const { user, password } = req.params;
 
   const re = new RegExp(user);
@@ -162,6 +163,15 @@ app.post("/signin/:user/:password/", (req, res) => {
    if (!userExists) {
      res.send("User does not exist");
    }
+ });
+
+ const imageParser = bodyParser.raw({ type: "image/jpeg", limit: "500mb" });
+
+ app.post("/upload", imageParser, (req, res) => {
+   fs.writeFile("new-image.jpg", req.body, (err) => {
+     if (err) throw err;
+     console.log("File saved: new-image.jpg");
+   });
  });
 
 app.listen(4567, () => console.log("Listening on port 4567..."));

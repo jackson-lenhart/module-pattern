@@ -3,7 +3,28 @@
 module.exports = ((fs, crypto) => {
   return {
     parseUsers: () => {
-      const usersArr =
+      fs.readFile("users.csv", (err, data) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+
+        const usersArr =
+          data.trim()
+            .split("\n");
+        const fields =
+          usersArr[0].split(",");
+        return userArr.slice(1)
+          .map((line) => line.split(","))
+          .map((userArr) => {
+            return userArr.reduce((user, el, i) => {
+              user[fields[i]] = el;
+              return user;
+            }, {});
+          })
+      });
+
+      /*const usersArr =
         fs.readFileSync("users.csv", "utf8")
           .trim()
           .split("\n");
@@ -15,7 +36,7 @@ module.exports = ((fs, crypto) => {
             user[fields[i]] = el;
             return user;
           }, {});
-        });
+        });*/
     },
     incrementId: () => {
       const users =
