@@ -5,6 +5,7 @@ const express = require("express");
 const fs = require("fs");
 const crypto = require("crypto");
 const bodyParser = require("body-parser");
+const path = require("path");
 
 /* relative dependencies */
 const client = require("./client");
@@ -168,9 +169,22 @@ app.post("/signin/:user/:password/", (req, res) => {
  const imageParser = bodyParser.raw({ type: "image/jpeg", limit: "500mb" });
 
  app.post("/upload", imageParser, (req, res) => {
-   fs.writeFile("new-image.jpg", req.body, (err) => {
+   fs.writeFile("new-image1.jpg", req.body, (err) => {
      if (err) throw err;
-     console.log("File saved: new-image.jpg");
+     console.log("File saved: new-image1.jpg");
+   });
+ });
+
+ app.get("/image/:id", (req, res) => {
+   const id = req.params.id
+
+   const fileName = `new-image${id}.jpg`;
+   fs.readFile(fileName, (err, data) => {
+     if (err) throw err;
+
+     res.sendFile(path.join(__dirname, fileName), (err) => {
+       if (err) throw err;
+     });
    });
  });
 
