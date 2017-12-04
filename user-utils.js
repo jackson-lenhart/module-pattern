@@ -1,42 +1,33 @@
 "use strict";
 
-module.exports = ((fs, crypto) => {
+module.exports = ((fs, crypto, bcrypt) => {
   return {
-    parseUsers: () => {
-      fs.readFile("users.csv", (err, data) => {
+    parseUsers: (callback) => {
+      fs.readFile("users.csv", "utf8", (err, data) => {
         if (err) {
           console.error(err);
           return;
         }
-
-        const usersArr =
-          data.trim()
-            .split("\n");
-        const fields =
-          usersArr[0].split(",");
-        return userArr.slice(1)
-          .map((line) => line.split(","))
+        console.log("Initial data: ", data);
+        const usersArr = data.trim().split("\n");
+        console.log("Users Array: ", usersArr);
+        const fields = usersArr[0].split(",");
+        console.log("Fields: ", fields);
+        const result = usersArr.slice(1)
+          .map((line) => {
+            console.log("Each line split by commas: ", line.split(","));
+            return line.split(",");
+          })
           .map((userArr) => {
             return userArr.reduce((user, el, i) => {
               user[fields[i]] = el;
+              console.log(`User on iteration ${i}: `, user)
               return user;
             }, {});
           })
+        console.log("Result: ", result);
+        callback(result);
       });
-
-      /*const usersArr =
-        fs.readFileSync("users.csv", "utf8")
-          .trim()
-          .split("\n");
-      const fields = usersArr[0].split(",");
-      return usersArr.slice(1)
-        .map((line) => line.split(","))
-        .map((userArr) => {
-          return userArr.reduce((user, el, i) => {
-            user[fields[i]] = el;
-            return user;
-          }, {});
-        });*/
     },
     incrementId: () => {
       const users =
@@ -68,14 +59,23 @@ module.exports = ((fs, crypto) => {
       fs.writeFileSync("users.csv", newUsersFile, "utf8");
     },
     hashPassword: (password, successFn) => {
-      const hash = crypto.createHash("sha256");
+      bcrypt.genSalt(10, (err, salt) => {
+        if (err) throw err;
+
+        bcrypt.hash(password, salt, (err, hash) => {
+          if (err) throw err;
+          successFn(hash);
+        });
+      });
+
+      /*const hash = crypto.createHash("sha256");
       hash.on("readable", () => {
-        const data = hash.read().toString();
+        const data = hash.read();
         if (data) successFn(data);
       });
 
       hash.write(password);
-      hash.end();
+      hash.end();*/
     }
   };
-})(require("fs"), require("crypto"));
+})(require("fs"), require("crypto"), require("bcrypt"));

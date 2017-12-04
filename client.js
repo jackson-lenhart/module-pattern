@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = ((http, fs) => {
+module.exports = ((http, fs, request) => {
   return {
     createUser: (user, password) => {
       const userRe = /^[-\w\.\$@\*\!]{1,30}$/;
@@ -17,29 +17,19 @@ module.exports = ((http, fs) => {
         return;
       }
 
+      const userObj = { user, password };
+
       const options = {
-        hostname: "localhost",
-        port: 4567,
-        path: `/${user}/${password}/`,
+        url: "http://localhost:4567/createuser/",
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Content-Length": Buffer.byteLength(user + password)
-        }
+        json: userObj
       };
 
-      const req = http.request(options, (res) => {
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => {
-          console.log(chunk);
-        });
+      request(options, (err, res, body) => {
+        console.log("Error: ", err);
+        console.log("Response: ", res);
+        console.log("Body: ", body);
       });
-
-      req.on("error", (e) => {
-        console.error(`problem with request: ${e.message}`);
-      });
-
-      req.end();
     },
     signIn: (user, password) => {
       const options = {
@@ -70,7 +60,32 @@ module.exports = ((http, fs) => {
       const options = {
         hostname: "localhost",
         port: 4567,
-        path: `/signout/`,
+        path: "/signout/",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": Buffer.byteLength("")
+        }
+      };
+
+      const req = http.request(options, (res) => {
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          console.log(chunk);
+        });
+      });
+
+      req.on("error", (e) => {
+        console.error(`problem with request: ${e.message}`);
+      });
+
+      req.end();
+    },
+    changePassword: (user, password, newPassword) => {
+      const options = {
+        hostname: "localhost",
+        port: 4567,
+        path: `/changepassword/${user}/${password}/${newPassword}`,
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -200,4 +215,4 @@ module.exports = ((http, fs) => {
       req.end();
     }
   };
-})(require("http"), require("fs"));
+})(require("http"), require("fs"), require("request"));
