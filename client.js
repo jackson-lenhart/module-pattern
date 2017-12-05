@@ -27,7 +27,6 @@ module.exports = ((http, fs, request) => {
 
       request(options, (err, res, body) => {
         console.log("Error: ", err);
-        console.log("Response: ", res);
         console.log("Body: ", body);
       });
     },

@@ -31,33 +31,40 @@ app.post("/createuser", jsonParser, (req, res) => {
 
   const { user, password } = req.body;
 
-  MongoClient.connect(mongoUrl, (err, db) => {
-    if (err) throw err;
-
+  MongoClient.connect(mongoUrl).then((db) => {
     const Users = db.collection("users");
 
-    if (Users.find({ user })) {
-      res.send("User already exists");
-      return;
-    }
+    Users.find({ user: user }).count().then((count) => {
+      if (count > 0) {
+        const msg = "User already exists";
+        res.send(msg);
+        db.close();
+        return;
+      }
 
-    userUtils.hashPassword(password, (hash) => {
-      Users.insertOne({
-        user,
-        password: hash,
-        deleted: false
-      }, (err, result) => {
-        if (err) throw err;
-
-        console.log(`User created: ${user}`);
-        STATE.signedIn = true;
-        STATE.currentUser = user;
-        res.send(`Welcome, ${user}!`);
+      userUtils.hashPassword(password).then((hash) => {
+        Users.insertOne({
+          user,
+          password: hash,
+          deleted: false
+        }).then((result) => {
+          db.close();
+          console.log(result);
+          STATE.signedIn = true;
+          STATE.currentUser = user;
+          res.send(`Welcome, ${user}.`);
+        }).catch((err) => {
+          console.log(err);
+          db.close();
+        });
+      }).catch((err) => {
+        console.log(err);
       });
     });
   });
 });
 
+//promisify sign in
 app.post("/signin/:user/:password/", (req, res) => {
   if (STATE.signedIn) {
     res.send("You are already signed in!");

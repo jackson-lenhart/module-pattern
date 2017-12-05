@@ -58,7 +58,19 @@ module.exports = ((fs, crypto, bcrypt) => {
 
       fs.writeFileSync("users.csv", newUsersFile, "utf8");
     },
-    hashPassword: (password, successFn) => {
+    hashPassword: (password) => {
+      return new Promise((resolve, reject) => {
+        bcrypt.genSalt(10, (err, salt) => {
+          if (err) reject(err);
+
+          bcrypt.hash(password, salt, (err, hash) => {
+            if (err) reject(err);
+            resolve(hash)
+          });
+        })
+      });
+    }
+    /*hashPassword: (password, successFn) => {
       bcrypt.genSalt(10, (err, salt) => {
         if (err) throw err;
 
@@ -67,15 +79,6 @@ module.exports = ((fs, crypto, bcrypt) => {
           successFn(hash);
         });
       });
-
-      /*const hash = crypto.createHash("sha256");
-      hash.on("readable", () => {
-        const data = hash.read();
-        if (data) successFn(data);
-      });
-
-      hash.write(password);
-      hash.end();*/
-    }
+    }*/
   };
 })(require("fs"), require("crypto"), require("bcrypt"));
