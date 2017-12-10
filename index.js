@@ -87,7 +87,10 @@ app.post("/signin", jsonParser, (req, res) => {
       }
 
       bcrypt.compare(password, result.password, (err, success) => {
-        if (err) throw err;
+        if (err) {
+          res.send("Password does not match our records");
+          db.close();
+        };
 
         if (success) {
           const sessionId = shortid.generate();
@@ -96,7 +99,7 @@ app.post("/signin", jsonParser, (req, res) => {
             user,
             timestamp,
             active: true
-          }
+          };
           console.log(STATE);
           res.json({ sessionId, timestamp });
         } else {
@@ -110,15 +113,63 @@ app.post("/signin", jsonParser, (req, res) => {
 });
 
 //FIX
-app.post("/changepassword/:user/:password/:newpassword", (req, res) => {
-  if (!STATE.signedIn) {
-   res.send("You must be signed in to change your password!");
-    return;
-  }
+app.post("/changepassword", jsonParser, (req, res) => {
+  console.log("Body of request:", req.body);
+  const { user, password, newPassword } = req.body;
 
-  const { user, password, newpassword } = req.params;
+  MongoClient.connect(mongoUrl).then((db) => {
+    const Users = db.collection("users");
 
-  let passwordDigest = "";
+    Users.findOne({ user: user }).then((result) => {
+      if (!result) {
+        res.send("User does not exist");
+        db.close();
+      }
+
+      console.log("Password:", password);
+      console.log("Result password:", result.password);
+      bcrypt.compare(password, result.password, (err, success) => {
+        if (err) {
+          console.error(err);
+          db.close();
+        }
+
+        if (!success) {
+          res.send("Password does not match our records");
+          db.close();
+        }
+
+        console.log("New password before hash:", newPassword);
+        userUtils.hashPassword(newPassword).then((hash) => {
+          console.log("Hash:", hash);
+          Users.update(
+            { user: result.user },
+            {
+              user: result.user,
+              password: hash,
+              deleted: false
+            }
+          ).then((result) => {
+            db.close();
+          }).catch((err) => {
+            console.error(err);
+            db.close();
+          });
+        }).catch((err) => {
+          res.send("Error changing your password");
+          console.error(err);
+          db.close();
+        });
+      });
+    }).catch((err) => {
+      console.error(err);
+      db.close();
+    });
+  }).catch((err) => {
+    console.error(err);
+  });
+
+  /*let passwordDigest = "";
   userUtils.hashPassword(password, (hash) => {
     passwordDigest = hash;
 
@@ -133,10 +184,10 @@ app.post("/changepassword/:user/:password/:newpassword", (req, res) => {
       fs.writeFile("users.csv", newUsersFile, "utf8", (err) => {
          if (err) throw err;
          res.send("Password successfully changed!");
-        })
+       });
       });
     });
-  });
+  })*/;
 });
 
 app.get("/secret", (req, res) => {

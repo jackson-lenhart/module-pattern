@@ -76,7 +76,31 @@ module.exports = ((http, fs, request) => {
       STATE.currentUser = null;
     },
     changePassword: (user, password, newPassword) => {
+      if (!STATE.signedIn) {
+        console.log("Must be signed in to change password!");
+        return;
+      }
+
+      const userUpdatePassword = {
+        user,
+        password,
+        newPassword
+      };
+
+      console.log("User obj for update password request:", userUpdatePassword);
+
       const options = {
+        url: "http://localhost:4567/changepassword",
+        method: "POST",
+        json: userUpdatePassword
+      };
+
+      request(options, (err, res, body) => {
+        if (err) throw err;
+        console.log("Body:", body);
+      });
+
+      /*const options = {
         hostname: "localhost",
         port: 4567,
         path: `/changepassword/${user}/${password}/${newPassword}`,
@@ -98,7 +122,7 @@ module.exports = ((http, fs, request) => {
         console.error(`problem with request: ${e.message}`);
       });
 
-      req.end();
+      req.end();*/
     },
     getSecret: () => {
       http.get("http://localhost:4567/secret", (res) => {
