@@ -87,8 +87,6 @@ module.exports = ((http, fs, request) => {
         newPassword
       };
 
-      console.log("User obj for update password request:", userUpdatePassword);
-
       const options = {
         url: "http://localhost:4567/changepassword",
         method: "POST",
@@ -99,30 +97,6 @@ module.exports = ((http, fs, request) => {
         if (err) throw err;
         console.log("Body:", body);
       });
-
-      /*const options = {
-        hostname: "localhost",
-        port: 4567,
-        path: `/changepassword/${user}/${password}/${newPassword}`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Content-Length": Buffer.byteLength("")
-        }
-      };
-
-      const req = http.request(options, (res) => {
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => {
-          console.log(chunk);
-        });
-      });
-
-      req.on("error", (e) => {
-        console.error(`problem with request: ${e.message}`);
-      });
-
-      req.end();*/
     },
     getSecret: () => {
       http.get("http://localhost:4567/secret", (res) => {

@@ -112,9 +112,7 @@ app.post("/signin", jsonParser, (req, res) => {
   });
 });
 
-//FIX
 app.post("/changepassword", jsonParser, (req, res) => {
-  console.log("Body of request:", req.body);
   const { user, password, newPassword } = req.body;
 
   MongoClient.connect(mongoUrl).then((db) => {
@@ -126,8 +124,6 @@ app.post("/changepassword", jsonParser, (req, res) => {
         db.close();
       }
 
-      console.log("Password:", password);
-      console.log("Result password:", result.password);
       bcrypt.compare(password, result.password, (err, success) => {
         if (err) {
           console.error(err);
@@ -139,9 +135,7 @@ app.post("/changepassword", jsonParser, (req, res) => {
           db.close();
         }
 
-        console.log("New password before hash:", newPassword);
         userUtils.hashPassword(newPassword).then((hash) => {
-          console.log("Hash:", hash);
           Users.update(
             { user: result.user },
             {
@@ -168,26 +162,6 @@ app.post("/changepassword", jsonParser, (req, res) => {
   }).catch((err) => {
     console.error(err);
   });
-
-  /*let passwordDigest = "";
-  userUtils.hashPassword(password, (hash) => {
-    passwordDigest = hash;
-
-    let newPasswordDigest = "";
-    userUtils.hashPassword(newpassword, (hash) => {
-    newPasswordDigest = hash;
-
-    fs.readFile("users.csv", "utf8", (err, data) => {
-      if (err) throw err;
-
-      const newUsersFile = data.replace(passwordDigest, newPasswordDigest)
-      fs.writeFile("users.csv", newUsersFile, "utf8", (err) => {
-         if (err) throw err;
-         res.send("Password successfully changed!");
-       });
-      });
-    });
-  })*/;
 });
 
 app.get("/secret", (req, res) => {
