@@ -60,6 +60,10 @@ module.exports = ((http, fs, request) => {
       request(options, (err, res, body) => {
         if (err) throw err;
         console.log("Body:", body)
+        if (!body.success) {
+          throw new Error("Error signing in:", body.msg);
+        }
+
         STATE.signedIn = true;
         STATE.currentUser = userObj.user;
         console.log(`STATE updated. Now signed in as ${STATE.currentUser}`);
@@ -99,7 +103,17 @@ module.exports = ((http, fs, request) => {
       });
     },
     getSecret: () => {
-      http.get("http://localhost:4567/secret", (res) => {
+      if (!STATE.signedIn) {
+        console.log("Must be signed in to view this page");
+        return;
+      }
+
+      request.get("http://localhost:4567/secret", (err, res, body) => {
+        if (err) throw err;
+        console.log("Body:", body);
+      });
+
+      /*http.get("http://localhost:4567/secret", (res) => {
         const statusCode = res.statusCode;
         const contentType = res.headers["content-type"];
 
@@ -129,7 +143,7 @@ module.exports = ((http, fs, request) => {
         });
       }).on("error", (e) => {
         console.error(`Got error: ${e.message}`);
-      });
+      });*/
     },
     deleteUser: (user, password) => {
       const options = {

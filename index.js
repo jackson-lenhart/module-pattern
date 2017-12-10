@@ -101,9 +101,9 @@ app.post("/signin", jsonParser, (req, res) => {
             active: true
           };
           console.log(STATE);
-          res.json({ sessionId, timestamp });
+          res.json({ sessionId, timestamp, success: true });
         } else {
-          res.send("Password does not match our records");
+          res.json({ msg: "Password does not match our records", success: false });
         }
       });
     }).catch((err) => {
@@ -165,11 +165,6 @@ app.post("/changepassword", jsonParser, (req, res) => {
 });
 
 app.get("/secret", (req, res) => {
-  if (!STATE.signedIn) {
-   res.send("Permission denied.");
-   return;
-  }
-
   res.send("Secret page!");
 });
 
