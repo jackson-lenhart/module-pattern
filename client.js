@@ -1,8 +1,18 @@
 "use strict";
 
 module.exports = ((http, fs, request) => {
+  const STATE = {
+    signedIn: false,
+    currentUser: null
+  };
+
   return {
     createUser: (user, password) => {
+      if (STATE.signedIn) {
+        console.log(`Already signed in as ${currentUser}`)
+        return;
+      }
+
       const userRe = /^[-\w\.\$@\*\!]{1,30}$/;
       const passwordRe = /^[-\w\.\$@\*\!]{1,30}$/;
 
@@ -26,59 +36,44 @@ module.exports = ((http, fs, request) => {
       };
 
       request(options, (err, res, body) => {
-        console.log("Error: ", err);
-        console.log("Body: ", body);
+        if (err) throw err;
+        console.log("Body:", body);
+        STATE.signedIn = true;
+        STATE.currentUser = userObj.user;
+        console.log(`STATE updated. Now signed in as ${STATE.currentUser}`);
       });
     },
     signIn: (user, password) => {
+      if (STATE.signedIn) {
+        console.log(`Already signed in as ${STATE.currentUser}`);
+        return;
+      }
+
+      const userObj = { user, password };
+
       const options = {
-        hostname: "localhost",
-        port: 4567,
-        path: `/signin/${user}/${password}/`,
+        url: "http://localhost:4567/signin",
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Content-Length": Buffer.byteLength(user + password)
-        }
+        json: userObj
       };
 
-      const req = http.request(options, (res) => {
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => {
-          console.log(chunk);
-        });
+      request(options, (err, res, body) => {
+        if (err) throw err;
+        console.log("Body:", body)
+        STATE.signedIn = true;
+        STATE.currentUser = userObj.user;
+        console.log(`STATE updated. Now signed in as ${STATE.currentUser}`);
       });
-
-      req.on("error", (e) => {
-        console.error(`problem with request: ${e.message}`);
-      });
-
-      req.end();
     },
     signOut: () => {
-      const options = {
-        hostname: "localhost",
-        port: 4567,
-        path: "/signout/",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Content-Length": Buffer.byteLength("")
-        }
-      };
+      if (!STATE.signedIn) {
+        console.log("You are not currently signed in!");
+        return;
+      }
 
-      const req = http.request(options, (res) => {
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => {
-          console.log(chunk);
-        });
-      });
-
-      req.on("error", (e) => {
-        console.error(`problem with request: ${e.message}`);
-      });
-
-      req.end();
+      console.log("Signing out...");
+      STATE.signedIn = false;
+      STATE.currentUser = null;
     },
     changePassword: (user, password, newPassword) => {
       const options = {

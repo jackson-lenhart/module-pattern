@@ -8,6 +8,7 @@ const bodyParser = require("body-parser");
 const path = require("path");
 const MongoClient = require("mongodb").MongoClient;
 const bcrypt = require("bcrypt");
+const shortid = require("shortid");
 
 /* relative dependencies */
 const userUtils = require("./user-utils");
@@ -17,18 +18,14 @@ const app = express();
 
 const STATE = {
   signedIn: false,
-  currentUser: null
+  currentUser: null,
+  sessions: {}
 };
 
 const jsonParser = bodyParser.json();
 
 /* create user */
 app.post("/createuser", jsonParser, (req, res) => {
-  if (STATE.signedIn) {
-    res.send(`You are already signed in as ${STATE.currentUser}`);
-    return;
-  }
-
   const { user, password } = req.body;
 
   MongoClient.connect(mongoUrl).then((db) => {
@@ -49,69 +46,70 @@ app.post("/createuser", jsonParser, (req, res) => {
           deleted: false
         }).then((result) => {
           db.close();
+          const sessionId = shortid.generate();
+          const timestamp = new Date();
+          STATE.sessions[sessionId] = {
+            user,
+            timestamp,
+            active: true
+          };
+          res.json({ sessionId, timestamp });
           console.log(result);
-          STATE.signedIn = true;
-          STATE.currentUser = user;
-          res.send(`Welcome, ${user}.`);
         }).catch((err) => {
-          console.log(err);
+          console.error(err);
           db.close();
         });
       }).catch((err) => {
-        console.log(err);
+        console.error(err);
+        db.close();
       });
+    }).catch((err) => {
+      console.error(err);
+      db.close();
     });
+  }).catch((err) => {
+    console.error(err);
+    db.close();
   });
 });
 
 //promisify sign in
-app.post("/signin/:user/:password/", (req, res) => {
-  if (STATE.signedIn) {
-    res.send("You are already signed in!");
-    return;
-  }
+app.post("/signin", jsonParser, (req, res) => {
+  const { user, password } = req.body;
 
-  const { user, password } = req.params;
-
-  MongoClient.connect(mongoUrl, (err, db) => {
-    if (err) throw err;
-
+  MongoClient.connect(mongoUrl).then((db) => {
     const Users = db.collection("users");
 
-    Users.findOne({ user }, (err, result) => {
-      if (err) throw err;
-
+    Users.findOne({ user: user }).then((result) => {
       if (!result) {
         res.send("User does not exist");
-        return;
+        db.close();
       }
 
-      bcrypt.compare(password, result.password, (err, result) => {
+      bcrypt.compare(password, result.password, (err, success) => {
         if (err) throw err;
 
-        if (result) {
-          res.send(`Welcome back, ${user}`);
-          STATE.signedIn = true;
-          STATE.currentUser = user;
+        if (success) {
+          const sessionId = shortid.generate();
+          const timestamp = new Date();
+          STATE.sessions[sessionId] = {
+            user,
+            timestamp,
+            active: true
+          }
+          console.log(STATE);
+          res.json({ sessionId, timestamp });
         } else {
           res.send("Password does not match our records");
         }
       });
+    }).catch((err) => {
+      console.error(err);
     });
   });
 });
 
-app.post("/signout", (req, res) => {
-  if (!STATE.signedIn) {
-    res.send("You are not currently signed in!");
-    return;
-  }
-
-  STATE.signedIn = false;
-  STATE.currentUser = null;
-  res.send("Signing out.");
-});
-
+//FIX
 app.post("/changepassword/:user/:password/:newpassword", (req, res) => {
   if (!STATE.signedIn) {
    res.send("You must be signed in to change your password!");
