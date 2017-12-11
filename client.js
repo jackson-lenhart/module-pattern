@@ -9,7 +9,7 @@ module.exports = ((http, fs, request) => {
   return {
     createUser: (user, password) => {
       if (STATE.signedIn) {
-        console.log(`Already signed in as ${currentUser}`)
+        console.log(`Already signed in as ${STATE.currentUser}`)
         return;
       }
 
@@ -38,6 +38,10 @@ module.exports = ((http, fs, request) => {
       request(options, (err, res, body) => {
         if (err) throw err;
         console.log("Body:", body);
+        if (!body.success) {
+          throw new Error(`Error creating user: ${body.msg}`);
+        }
+        
         STATE.signedIn = true;
         STATE.currentUser = userObj.user;
         console.log(`STATE updated. Now signed in as ${STATE.currentUser}`);
@@ -61,7 +65,7 @@ module.exports = ((http, fs, request) => {
         if (err) throw err;
         console.log("Body:", body)
         if (!body.success) {
-          throw new Error("Error signing in:", body.msg);
+          throw new Error(`Error signing in: ${body.msg}`);
         }
 
         STATE.signedIn = true;
@@ -143,29 +147,25 @@ module.exports = ((http, fs, request) => {
       });
     },
     undeleteUser: (user, password) => {
+      const userToRestore = { user, password };
+
       const options = {
-        hostname: "localhost",
-        port: 4567,
-        path: `/undelete/${user}/${password}`,
+        url: "http://localhost:4567/undelete",
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Content-Length": Buffer.byteLength(user + password)
-        }
+        json: userToRestore
       };
 
-      const req = http.request(options, (res) => {
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => {
-          console.log(chunk);
-        });
-      });
+      request(options, (err, res, body) => {
+        if (err) throw err;
+        console.log("Body:", body);
 
-      req.on("error", (e) => {
-        console.error(`problem with request: ${e.message}`);
-      });
+        if (!body.success) {
+          throw new Error(body.msg);
+        }
 
-      req.end();
+        STATE.signedIn = true;
+        STATE.currentUser = user;
+      });
     },
     uploadImage: () => {
       const img = fs.readFileSync("swirling-galaxy.jpg");

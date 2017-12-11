@@ -17,8 +17,6 @@ const mongoUrl = require("./mongo-url");
 const app = express();
 
 const STATE = {
-  signedIn: false,
-  currentUser: null,
   sessions: {}
 };
 
@@ -31,10 +29,10 @@ app.post("/createuser", jsonParser, (req, res) => {
   MongoClient.connect(mongoUrl).then((db) => {
     const Users = db.collection("users");
 
-    Users.find({ user: user }).count().then((count) => {
-      if (count > 0) {
+    Users.findOne({ user: user }).then((result) => {
+      if (result) {
         const msg = "User already exists";
-        res.send(msg);
+        res.json({ msg, success: false });
         db.close();
         return;
       }
@@ -53,7 +51,7 @@ app.post("/createuser", jsonParser, (req, res) => {
             timestamp,
             active: true
           };
-          res.json({ sessionId, timestamp });
+          res.json({ sessionId, success: true });
           console.log(result);
         }).catch((err) => {
           console.error(err);
@@ -68,8 +66,8 @@ app.post("/createuser", jsonParser, (req, res) => {
       db.close();
     });
   }).catch((err) => {
+    res.json({ msg: "Could not connect to database Users", success: false });
     console.error(err);
-    db.close();
   });
 });
 
@@ -78,46 +76,15 @@ app.post("/signin", jsonParser, (req, res) => {
 
   MongoClient.connect(mongoUrl).then((db) => {
     const Users = db.collection("users");
-
-    Users.findOne({ user: user }).then((result) => {
-      if (!result) {
-        res.send("User does not exist");
-        db.close();
-        return;
-      }
-
-      if (result.deleted) {
-        res.json({ msg: `${user} has been deleted`, success: false });
-        db.close();
-        return;
-      }
-
-      bcrypt.compare(password, result.password, (err, success) => {
-        if (err) {
-          res.send("Password does not match our records");
-          db.close();
-          return;
-        };
-
-        if (success) {
-          const sessionId = shortid.generate();
-          const timestamp = new Date();
-          STATE.sessions[sessionId] = {
-            user,
-            timestamp,
-            active: true
-          };
-          console.log(STATE);
-          res.json({ sessionId, timestamp, success: true });
-        } else {
-          res.json({ msg: "Password does not match our records", success: false });
-          db.close();
-          return;
-        }
-      });
+    userUtils.validateUser(user, password, Users).then((result) => {
+      res.json({ msg: `Welcome back ${user}`, success: true });
     }).catch((err) => {
-      console.error(err);
+      res.json({ msg: `Error validating user: ${err}`, success: false });
+      db.close();
+      return;
     });
+  }).catch((err) => {
+    console.error("Error connecting to Users:", err);
   });
 });
 
@@ -127,57 +94,31 @@ app.post("/changepassword", jsonParser, (req, res) => {
   MongoClient.connect(mongoUrl).then((db) => {
     const Users = db.collection("users");
 
-    Users.findOne({ user: user }).then((result) => {
-      if (!result) {
-        res.send("User does not exist");
-        db.close();
-        return;
-      }
-
-      if (result.deleted) {
-        res.json({ msg: `${user} has been deleted`, success: false });
-        db.close();
-        return;
-      }
-
-      bcrypt.compare(password, result.password, (err, success) => {
-        if (err) {
-          console.error(err);
+    userUtils.validateUser(user, password, Users).then((result) => {
+      userUtils.hashPassword(newPassword).then((hash) => {
+        Users.update(
+          { user: result.user },
+          {
+            user: result.user,
+            password: hash
+          }
+        ).then((success) => {
+          res.json({ msg: "Successfully updated password", success: true });
           db.close();
-          return;
-        }
-
-        if (!success) {
-          res.send("Password does not match our records");
-          db.close();
-          return;
-        }
-
-        userUtils.hashPassword(newPassword).then((hash) => {
-          Users.update(
-            { user: result.user },
-            {
-              user: result.user,
-              password: hash,
-              deleted: false
-            }
-          ).then((result) => {
-            db.close();
-          }).catch((err) => {
-            console.error(err);
-            db.close();
-          });
         }).catch((err) => {
-          res.send("Error changing your password");
-          console.error(err);
+          console.error("Error updating user:", err);
           db.close();
         });
+      }).catch((err) => {
+        console.error("Error hashing password:", err);
+        db.close();
       });
     }).catch((err) => {
-      console.error(err);
+      res.json({ msg: `Error validating user: ${err}`, success: false });
       db.close();
     });
   }).catch((err) => {
+    res.json({ msg: "Could not connect to database", success: false });
     console.error(err);
   });
 });
@@ -186,6 +127,7 @@ app.get("/secret", (req, res) => {
   res.send("Secret page!");
 });
 
+//refactor to use validateUser
 app.post("/delete", jsonParser, (req, res) => {
   const { user, password } = req.body;
 
@@ -243,36 +185,53 @@ app.post("/delete", jsonParser, (req, res) => {
   });
 });
 
-app.post("/undelete/:user/:password", (req, res) => {
-  const USERS = userUtils.parseUsers();
+app.post("/undelete", jsonParser, (req, res) => {
+  const { user, password } = req.body;
 
-  const { user, password } = req.params;
-  let userExists = false;
-  for (let i = 0; i < USERS.length; i++) {
-    if (USERS[i].user === user) {
-      userExists = true;
-      if (USERS[i].deleted === "false") {
-        res.send(`${user} has not been deleted`);
+  MongoClient.connect(mongoUrl).then((db) => {
+    const Users = db.collection("users");
+
+    Users.findOne({ user: user }).then((result) => {
+      if (!result.deleted) {
+        res.json({ msg: `User ${user} has not been deleted`, success: false });
+        db.close();
         return;
       }
 
-      userUtils.hashPassword(password, (passwordDigest) => {
-        if (USERS[i].passwordDigest === passwordDigest) {
-          userUtils.undeleteUser(USERS[i].id);
-          res.send(`${user} successfully recreated!`);
-          STATE.signedIn = true;
-          STATE.currentUser = user;
-        } else {
-          res.send("Password does not match our records");
-        }
-      });
-      break;
-    }
-  }
+      bcrypt.compare(password, result.password, (err, success) => {
+        if (err) throw err;
 
-  if (!userExists) {
-    res.send("User does not exist");
-  }
+        if (!success) {
+          res.json({ msg: "Password does not match our records", success: false });
+          db.close();
+          return;
+        }
+
+        Users.update(
+          { user: user },
+          {
+            user: result.user,
+            password: result.password,
+            deleted: false
+          }
+        ).then((result) => {
+          res.json({ msg: `User ${user} successfully restored`, success: true });
+          db.close();
+        }).catch((err) => {
+          console.error("Error updating Users [restore user]:", err);
+          res.json({ msg: `Could not delete ${user}`, success: false });
+          db.close();
+        });
+      });
+    }).catch((err) => {
+      res.json({ msg: `Could not find user ${user}`, success: false });
+      db.close();
+      return;
+    });
+  }).catch((err) => {
+    console.error(err);
+    res.json({ msg: "Could not connect to database. Server error", success: false });
+  });
 });
 
 const imageParser = bodyParser.raw({ type: "image/jpeg", limit: "500mb" });
