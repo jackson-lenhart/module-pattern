@@ -9,7 +9,7 @@ module.exports = ((http, fs, request) => {
   return {
     createUser: (user, password) => {
       if (STATE.signedIn) {
-        console.log(`Already signed in as ${STATE.currentUser}`)
+        console.error(`Already signed in as ${STATE.currentUser}`)
         return;
       }
 
@@ -41,7 +41,7 @@ module.exports = ((http, fs, request) => {
         if (!body.success) {
           throw new Error(`Error creating user: ${body.msg}`);
         }
-        
+
         STATE.signedIn = true;
         STATE.currentUser = userObj.user;
         console.log(`STATE updated. Now signed in as ${STATE.currentUser}`);
@@ -49,7 +49,7 @@ module.exports = ((http, fs, request) => {
     },
     signIn: (user, password) => {
       if (STATE.signedIn) {
-        console.log(`Already signed in as ${STATE.currentUser}`);
+        console.error(`Already signed in as ${STATE.currentUser}`);
         return;
       }
 
@@ -75,7 +75,7 @@ module.exports = ((http, fs, request) => {
     },
     signOut: () => {
       if (!STATE.signedIn) {
-        console.log("You are not currently signed in!");
+        console.error("You are not currently signed in!");
         return;
       }
 
@@ -85,7 +85,12 @@ module.exports = ((http, fs, request) => {
     },
     changePassword: (user, password, newPassword) => {
       if (!STATE.signedIn) {
-        console.log("Must be signed in to change password!");
+        console.error("Must be signed in to change password!");
+        return;
+      }
+
+      if (user !== STATE.currentUser) {
+        console.error(`You are not signed in as ${user}`);
         return;
       }
 
@@ -108,7 +113,7 @@ module.exports = ((http, fs, request) => {
     },
     getSecret: () => {
       if (!STATE.signedIn) {
-        console.log("Must be signed in to view this page");
+        console.error("Must be signed in to view this page");
         return;
       }
 
@@ -191,6 +196,34 @@ module.exports = ((http, fs, request) => {
 
       req.write(img);
       req.end();
+    },
+    transfer: (from, to, amount) => {
+      if (!STATE.signedIn) {
+        console.error("You must be signed in to transfer");
+        return;
+      }
+
+      if (from !== STATE.currentUser) {
+        console.error(`You are not signed in as ${from}`);
+        return;
+      }
+
+      const transferObj = { from, to, amount };
+
+      const options = {
+        url: "http://localhost:4567/transfer",
+        method: "POST",
+        json: transferObj
+      };
+
+      request(options, (err, res, body) => {
+        if (err) throw err;
+        console.log("Body:", body);
+
+        if (!body.success) {
+          throw new Error(body.msg);
+        }
+      });
     }
   };
 })(require("http"), require("fs"), require("request"));
