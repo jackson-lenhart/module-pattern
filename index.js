@@ -217,3 +217,32 @@ app.post("/transfer", jsonParser, (req, res) => {
     console.error(err);
   });
 });
+
+app.get("/allusers", (req, res) => {
+  const db = req.app.locals.db;
+  const Users = db.collection("users");
+
+  Users.find().toArray().then((result) => {
+    if (!result) {
+      res.json({ msg: "Could not retrieve users", success: false });
+      return;
+    }
+
+    res.json(result);
+  });
+});
+
+app.post("/postgame", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+
+  const { count, user } = req.body;
+  Games.insertOne({
+    count: count,
+    user: user
+  }).then((result) => {
+    res.json({ msg: "Inserted count.", success: true });
+  }).catch((err) => {
+    console.error(err);
+  });
+});
