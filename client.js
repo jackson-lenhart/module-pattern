@@ -151,7 +151,7 @@ module.exports = ((http, fs, request) => {
         STATE.currentUser = null;
       });
     },
-    undeleteUser: (user, password) => {
+    restoreUser: (user, password) => {
       const userToRestore = { user, password };
 
       const options = {
