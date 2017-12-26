@@ -232,16 +232,99 @@ app.get("/allusers", (req, res) => {
   });
 });
 
-app.post("/postgame", jsonParser, (req, res) => {
+app.post("/startgame", jsonParser, (req, res) => {
   const db = req.app.locals.db;
   const Games = db.collection("games");
 
-  const { count, user } = req.body;
+  const { gameId, scores } = req.body;
   Games.insertOne({
-    count: count,
-    user: user
+    gameId: gameId,
+    scores: scores,
+    active: true
   }).then((result) => {
-    res.json({ msg: "Inserted count.", success: true });
+    console.log("RESULT FROM STARTGAME ENDPOINT:", result);
+    res.json({ msg: "Successfully inserted", success: true });
+  }).catch((err) => {
+    console.error(err);
+  });
+});
+
+app.post("/postscore", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+
+  const { count, user, gameId } = req.body;
+  Games.update(
+    { gameId: gameId },
+    {
+      $push: {
+        scores: {
+          count: count,
+          user: user
+        }
+      }
+    }
+  ).then((success) => {
+    if (!success) {
+      res.json({ msg: "Could not update game", success: false });
+      return;
+    }
+    console.log("SUCCESS FROM POSTSCORE ENDPOINT", success);
+    res.json({ msg: "Successfully posted score", success: true });
+  }).catch((err) => {
+    console.error(err);
+  });
+});
+
+app.get("/games", (req, res) => {
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+
+  Games.find({ active: true })
+    .toArray()
+    .then((data) => {
+      if (data.length === 0) {
+        res.json([ "No active games" ]);
+        return;
+      }
+      res.json(data);
+    }).catch((err) => {
+      console.error(err);
+    });
+});
+
+app.get("/games/:gameId", (req, res) => {
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+
+  const { gameId } = req.params;
+  Games.findOne({ gameId: gameId }).then((result) => {
+    if (!result) {
+      res.json({ msg: "Could not find game", success: false });
+      return;
+    }
+
+    res.json(result);
+  }).catch((err) => {
+    console.error(err);
+  });
+});
+
+//send game data on end
+app.post("/endgame", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+
+  const { gameId } = req.body;
+  Games.update(
+    { gameId: gameId },
+    { $set: { active: false } }
+  ).then((result) => {
+    if (!result) {
+      res.json({ msg: "Failed to update", success: false });
+      return;
+    }
+    res.json({ msg: "Updated game, no longer active", success: true });
   }).catch((err) => {
     console.error(err);
   });
