@@ -236,9 +236,10 @@ app.post("/startgame", jsonParser, (req, res) => {
   const db = req.app.locals.db;
   const Games = db.collection("games");
 
-  const { gameId, scores } = req.body;
+  const { gameId, users, scores } = req.body;
   Games.insertOne({
     gameId: gameId,
+    users: users,
     scores: scores,
     active: true
   }).then((result) => {
@@ -246,6 +247,33 @@ app.post("/startgame", jsonParser, (req, res) => {
     res.json({ msg: "Successfully inserted", success: true });
   }).catch((err) => {
     console.error(err);
+  });
+});
+
+app.post("/postuser", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+
+  const { user, gameId } = req.body;
+
+  Games.update(
+    { gameId: gameId },
+    {
+      $push: {
+        users: user
+      }
+    }
+  ).then((success) => {
+    if (success) {
+      console.log("Success!", success);
+      res.json({ msg: "Posted user", success: true });
+    } else {
+      console.error("Failure on update");
+      res.json({ msg: "Could not post user", success: false});
+    }
+  }).catch((err) => {
+    console.error(err);
+    res.json({ msg: "Error updating", success: false });
   });
 });
 
