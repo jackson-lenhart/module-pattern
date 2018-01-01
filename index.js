@@ -81,6 +81,23 @@ app.get("/user/:user", (req, res) => {
   });
 });
 
+app.get("/user/:user/games", (req, res) => {
+  const user = req.params.user;
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+
+  Games.find({ users: [user] }).toArray().then((result) => {
+    if (!result) {
+      res.json({ msg: "Could not find any game(s) with user", success: false });
+      return;
+    }
+    res.json(result);
+  }).catch((err) => {
+    res.json({ msg: "Database error", success: false });
+    console.error(err);
+  });
+});
+
 app.post("/signin", jsonParser, (req, res) => {
   const { user, password } = req.body;
   const db = req.app.locals.db;
