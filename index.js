@@ -86,7 +86,12 @@ app.get("/user/:user/games", (req, res) => {
   const db = req.app.locals.db;
   const Games = db.collection("games");
 
-  Games.find({ users: [user] }).toArray().then((result) => {
+  Games.find(
+    {
+      users: user,
+      active: true
+    }
+  ).toArray().then((result) => {
     if (!result) {
       res.json({ msg: "Could not find any game(s) with user", success: false });
       return;
@@ -258,7 +263,8 @@ app.post("/startgame", jsonParser, (req, res) => {
     gameId: gameId,
     users: users,
     scores: scores,
-    active: true
+    active: true,
+    timestamp: new Date()
   }).then((result) => {
     console.log("RESULT FROM STARTGAME ENDPOINT:", result);
     res.json({ msg: "Successfully inserted", success: true });
@@ -370,6 +376,21 @@ app.post("/endgame", jsonParser, (req, res) => {
       return;
     }
     res.json({ msg: "Updated game, no longer active", success: true });
+  }).catch((err) => {
+    console.error(err);
+  });
+});
+
+app.get("/history", (req, res) => {
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+
+  Games.find({ active: false }).toArray().then((result) => {
+    if (!result) {
+      res.json({ msg: "History is blank", success: true });
+      return;
+    }
+    res.json(result);
   }).catch((err) => {
     console.error(err);
   });
