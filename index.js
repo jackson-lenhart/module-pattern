@@ -355,10 +355,45 @@ app.get("/games/:gameId", (req, res) => {
       return;
     }
 
+    if (result.users.length)
+
     res.json(result);
   }).catch((err) => {
     console.error(err);
   });
+});
+
+app.get("/look/:gameId/:property", (req, res) => {
+  const db = req.app.locals.db;
+  const Games = db.collection("games");
+  const { gameId, property } = req.params;
+
+  let iterations = 0;
+  const lookInterval = setInterval(() => {
+    iterations++;
+    console.log(iterations, "iterations");
+    Games.findOne({ gameId: gameId })
+      .then((result) => {
+        if (!result) {
+          return;
+        }
+
+        if (result[property][1]) {
+          res.json({
+            msg: "Found property!",
+            value: result,
+            success: true
+          });
+          clearInterval(lookInterval);
+        } else if (iterations > 30) {
+          res.json({
+            msg: "Could not find property in allocated time",
+            success: false
+          });
+          clearInterval(lookInterval);
+        }
+      });
+    }, 1000);
 });
 
 //send game data on end
