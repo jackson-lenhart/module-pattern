@@ -8,6 +8,13 @@ const MongoClient = require("mongodb").MongoClient;
 const bcrypt = require("bcrypt");
 
 const { validateUser, hashPassword } = require("./user-utils");
+const {
+  generateDeck,
+  generateHand,
+  handEvaluator,
+  compareResults
+} = require("./poker");
+
 const mongoUrl = require("./mongo-url");
 
 const app = express();
@@ -427,6 +434,80 @@ app.get("/history", (req, res) => {
     }
     res.json(result);
   }).catch((err) => {
+    console.error(err);
+  });
+});
+
+app.post("/poker/startgame", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const PokerGames = db.collection("pokerGames");
+  const { gameId, user, buyIn } = req.body;
+
+  PokerGames.insertOne({
+    gameId,
+    users: [user],
+    stacks: [{ user, stack: buyIn }]
+  }).then((result) => {
+    res.json({ msg: "Game inserted.", success: true });
+  }).catch((err) => {
+    console.error(err);
+    res.json({ msg: "Database error", success: false });
+  });
+});
+
+app.post("/poker/starthand", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const PokerHands = db.collection("pokerHands");
+  const { handId, gameId, players } = req.body;
+
+  const deck = generateDeck();
+  const hands = {};
+  players.forEach(p => {
+    const hand = [];
+    for (let i = 0; i < 5; i++) {
+      const r = Math.floor(Math.random() * deck.length);
+      hand.push(deck[r]);
+      deck.splice(r, 1);
+    }
+    hands[p] = hand;
+  });
+  console.log("hands from starthand", hands);
+  console.log("deck from starthand", deck);
+  console.log("deck length", deck.length);
+
+  PokerHands.insertOne({
+    handId,
+    gameId,
+    players,
+    hands,
+    deck
+  }).then((result) => {
+    res.json({ msg: "Hand inserted.", success: true });
+  }).catch((err) => {
+    res.json({ msg: "Database error from starthand", success: false });
+    console.error(err);
+  });
+});
+
+app.post("/poker/endhand", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const PokerHands = db.collection("pokerHands");
+  const { handId } = req.body;
+
+  PokerHands.findOne({ handId }).then((doc) => {
+    if (!doc) {
+      res.json({ msg: "Hand does not exist", success: false });
+      return;
+    }
+
+    const results = doc.players.map(p =>
+      handEvaluator(doc.hands[p])
+    );
+
+    const winners = compareResults(results);
+    res.json(winners);
+  }).catch((err) => {
+    res.json({ msg: "Database error from endhand", success: false });
     console.error(err);
   });
 });
