@@ -196,19 +196,19 @@ module.exports = (({
     },
     compareResults: results => {
       const winningRank = Math.min(
-        ...results.map(r => r.rank)
+        ...results.map(r => r.result.rank)
       );
 
-      const winners = results.filter(r => r.rank === winningRank);
+      const winners = results.filter(r => r.result.rank === winningRank);
 
       if (winners.length === 1) {
         return winners;
       }
 
-      winners.sort((a, b) => handleTie(a, b));
+      winners.sort((a, b) => handleTie(a.result, b.result));
       return winners.filter((w, i, arr) => {
         if (i === 0) return true;
-        return handleTie(w, arr[0]) === 0 ?
+        return handleTie(w.result, arr[0].result) === 0 ?
           true : false;
       });
     }

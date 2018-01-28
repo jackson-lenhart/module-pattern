@@ -438,15 +438,17 @@ app.get("/history", (req, res) => {
   });
 });
 
-app.post("/poker/startgame", jsonParser, (req, res) => {
+app.post("/poker/starttable", jsonParser, (req, res) => {
   const db = req.app.locals.db;
-  const PokerGames = db.collection("pokerGames");
-  const { gameId, user, buyIn } = req.body;
+  const PokerTables = db.collection("pokerTables");
+  const { tableId, user, buyIn } = req.body;
 
-  PokerGames.insertOne({
-    gameId,
+  PokerTables.insertOne({
+    tableId,
     users: [user],
-    stacks: [{ user, stack: buyIn }]
+    dealer: user,
+    stacks: [{ user, stack: buyIn }],
+    active: true
   }).then((result) => {
     res.json({ msg: "Game inserted.", success: true });
   }).catch((err) => {
@@ -455,10 +457,71 @@ app.post("/poker/startgame", jsonParser, (req, res) => {
   });
 });
 
+app.post("/poker/jointable", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const PokerTables = db.collection("pokerTables");
+  const { tableId, user, buyIn } = req.body;
+
+  PokerTables.update(
+    { tableId: tableId },
+    {
+      $push: {
+        users: user,
+        stacks: {
+          user,
+          stack: buyIn
+        }
+      }
+    },
+  ).then(success => {
+    res.json({ msg: "Successfully joined game", success: true });
+  }).catch(err => {
+    console.error(err);
+    res.json({ msg: "Database error from joingame", success: false });
+  });
+});
+
+app.get("/poker/findtable/:tableId", (req, res) => {
+  const db = req.app.locals.db;
+  const PokerTables = db.collection("pokerTables");
+  const { tableId } = req.params;
+
+  PokerTables.findOne({ tableId }).then(table => {
+    if (!table) {
+      res.json({ msg: "Table does not exist", success: false });
+      return;
+    }
+    res.json({
+      table,
+      success: true
+    });
+  }).catch(err => {
+    console.error(err);
+    res.json({ msg: "Database error", success: false });
+  });
+});
+
+app.get("/poker/activetables", (req, res) => {
+  const db = req.app.locals.db;
+  const PokerTables = db.collection("pokerTables");
+
+  PokerTables.find({ active: true })
+    .toArray()
+    .then(tables => {
+      res.json({
+        tables,
+        success: true
+      });
+    }).catch(err => {
+      console.error(err);
+      res.json({ msg: "Database error from activetables", success: false });
+    });
+});
+
 app.post("/poker/starthand", jsonParser, (req, res) => {
   const db = req.app.locals.db;
   const PokerHands = db.collection("pokerHands");
-  const { handId, gameId, players } = req.body;
+  const { handId, tableId, players, dealer } = req.body;
 
   const deck = generateDeck();
   const hands = {};
@@ -477,16 +540,40 @@ app.post("/poker/starthand", jsonParser, (req, res) => {
 
   PokerHands.insertOne({
     handId,
-    gameId,
+    tableId,
     players,
     hands,
-    deck
+    deck,
+    active: true
   }).then((result) => {
-    res.json({ msg: "Hand inserted.", success: true });
+    res.json({
+      hand: hands[dealer],
+      success: true
+    });
   }).catch((err) => {
     res.json({ msg: "Database error from starthand", success: false });
     console.error(err);
   });
+});
+
+app.post("/poker/joinhand", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const PokerHands = db.collection("pokerHands");
+  const { tableId, user } = req.body;
+
+  PokerHands.findOne({
+    tableId,
+    active: true
+  }).then(doc => {
+    res.json({
+      hand: doc.hands[user],
+      handId: doc.handId,
+      success: true
+    });
+  }).catch(err => {
+    console.error(err);
+    res.json({ msg: "Database error from joinhand", success: false });
+  })
 });
 
 app.post("/poker/endhand", jsonParser, (req, res) => {
@@ -500,12 +587,25 @@ app.post("/poker/endhand", jsonParser, (req, res) => {
       return;
     }
 
-    const results = doc.players.map(p =>
-      handEvaluator(doc.hands[p])
-    );
+    const results = doc.players.map(p => ({
+      user: p,
+      result: handEvaluator(doc.hands[p])
+    }));
 
     const winners = compareResults(results);
-    res.json(winners);
+
+    PokerHands.update(
+      { handId: handId },
+      { $set: { active: false } }
+    ).then(success => {
+      res.json({
+        winners,
+        success: true
+      });
+    }).catch(err => {
+      console.error(err);
+      res.json({ msg: "Database error from endhand", success: false });
+    });
   }).catch((err) => {
     res.json({ msg: "Database error from endhand", success: false });
     console.error(err);
