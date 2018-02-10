@@ -457,6 +457,39 @@ app.post("/poker/starttable", jsonParser, (req, res) => {
   });
 });
 
+app.get("/poker/look/:tableId/:property", (req, res) => {
+  const db = req.app.locals.db;
+  const PokerTables = db.collection("pokerTables");
+  const { tableId, property } = req.params;
+
+  let iterations = 0;
+  const lookInterval = setInterval(() => {
+    iterations++;
+    console.log(iterations, "iterations");
+    PokerTables.findOne({ tableId: tableId })
+      .then((result) => {
+        if (!result) {
+          return;
+        }
+
+        if (result[property][1]) {
+          res.json({
+            msg: "Found property!",
+            value: result,
+            success: true
+          });
+          clearInterval(lookInterval);
+        } else if (iterations > 30) {
+          res.json({
+            msg: "Could not find property in allocated time",
+            success: false
+          });
+          clearInterval(lookInterval);
+        }
+      });
+    }, 1000);
+});
+
 app.post("/poker/jointable", jsonParser, (req, res) => {
   const db = req.app.locals.db;
   const PokerTables = db.collection("pokerTables");
@@ -474,10 +507,10 @@ app.post("/poker/jointable", jsonParser, (req, res) => {
       }
     },
   ).then(success => {
-    res.json({ msg: "Successfully joined game", success: true });
+    res.json({ msg: "Successfully joined table", success: true });
   }).catch(err => {
     console.error(err);
-    res.json({ msg: "Database error from joingame", success: false });
+    res.json({ msg: "Database error from jointable", success: false });
   });
 });
 
@@ -541,9 +574,9 @@ app.post("/poker/starthand", jsonParser, (req, res) => {
   PokerHands.insertOne({
     handId,
     tableId,
-    players,
     hands,
     deck,
+    players,
     active: true
   }).then((result) => {
     res.json({
@@ -556,15 +589,18 @@ app.post("/poker/starthand", jsonParser, (req, res) => {
   });
 });
 
-app.post("/poker/joinhand", jsonParser, (req, res) => {
+app.post("/poker/gethand", jsonParser, (req, res) => {
   const db = req.app.locals.db;
   const PokerHands = db.collection("pokerHands");
   const { tableId, user } = req.body;
 
-  PokerHands.findOne({
-    tableId,
-    active: true
-  }).then(doc => {
+  PokerHands.findOne({ tableId: tableId }).then(doc => {
+    if (!doc) {
+      console.error(`Could not find hand with tableId ${tableId}`);
+      return;
+    }
+
+    console.log("HAND DOC", doc);
     res.json({
       hand: doc.hands[user],
       handId: doc.handId,
@@ -573,7 +609,7 @@ app.post("/poker/joinhand", jsonParser, (req, res) => {
   }).catch(err => {
     console.error(err);
     res.json({ msg: "Database error from joinhand", success: false });
-  })
+  });
 });
 
 app.post("/poker/endhand", jsonParser, (req, res) => {
