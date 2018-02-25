@@ -7,6 +7,13 @@ module.exports = ((http, fs, request) => {
   };
 
   return {
+    lookTest: (tableId, property) => {
+      let url = `http://localhost:4567/poker/look/${tableId}/${property}`;
+      request(url, (err, res, body) => {
+        if (err) throw err;
+        console.log(body);
+      });
+    },
     createUser: (user, password) => {
       if (STATE.signedIn) {
         console.error(`Already signed in as ${STATE.currentUser}`)
