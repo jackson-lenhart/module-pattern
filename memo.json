@@ -1,0 +1,24 @@
+{
+  "10d8d8h6c4c": {
+    "type": "PAIR",
+    "rank": 8,
+    "value": 8,
+    "kickers": [
+      10,
+      6,
+      4
+    ],
+    "msg": "One pair, 8"
+  },
+  "AdQd3c2h2d": {
+    "type": "PAIR",
+    "rank": 8,
+    "value": 2,
+    "kickers": [
+      14,
+      12,
+      3
+    ],
+    "msg": "One pair, 2"
+  }
+}

@@ -51,9 +51,9 @@ module.exports = (({
       newDeck.splice(i, 1);
       return generateHand(numCards - 1, newDeck, hand.concat(card));
     },
-    handEvaluator: handArr => {
-      handArr.sort((a, b) => b.rawValue - a.rawValue);
+    handEvaluator: (handArr) => {
       const hand = acesHighUnlessWheel(handArr);
+
       const rawValues = hand.map(card => card.rawValue);
       console.log("sorted raw values:", rawValues);
 
@@ -195,6 +195,10 @@ module.exports = (({
       };
     },
     compareResults: results => {
+      if (!Array.isArray(results)) {
+        throw new Error("compareResults expects an array as it's only argument");
+      }
+
       const winningRank = Math.min(
         ...results.map(r => r.result.rank)
       );

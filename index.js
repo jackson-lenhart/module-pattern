@@ -14,6 +14,7 @@ const {
   handEvaluator,
   compareResults
 } = require("./poker");
+const { acesHighUnlessWheel } = require("./poker-utils");
 
 const mongoUrl = require("./mongo-url");
 
@@ -447,7 +448,9 @@ app.post("/poker/starttable", jsonParser, (req, res) => {
     tableId,
     users: [user],
     dealer: user,
-    stacks: [{ user, stack: buyIn }],
+    stacks: {
+      [user]: buyIn
+    },
     active: true
   }).then((result) => {
     res.json({ msg: "Game inserted.", success: true });
@@ -498,12 +501,11 @@ app.post("/poker/jointable", jsonParser, (req, res) => {
   PokerTables.update(
     { tableId: tableId },
     {
+      $set: {
+        [`stacks.${user}`]: buyIn
+      },
       $push: {
-        users: user,
-        stacks: {
-          user,
-          stack: buyIn
-        }
+        users: user
       }
     },
   ).then(success => {
@@ -556,6 +558,8 @@ app.post("/poker/starthand", jsonParser, (req, res) => {
   const PokerHands = db.collection("pokerHands");
   const { handId, tableId, players, dealer } = req.body;
 
+  console.log("TABLEID FROM STARTHAND", tableId);
+
   const deck = generateDeck();
   const hands = {};
   players.forEach(p => {
@@ -577,6 +581,7 @@ app.post("/poker/starthand", jsonParser, (req, res) => {
     hands,
     deck,
     players,
+    pot: 0,
     active: true
   }).then((result) => {
     res.json({
@@ -612,21 +617,97 @@ app.post("/poker/gethand", jsonParser, (req, res) => {
   });
 });
 
+app.post("/poker/bet", jsonParser, (req, res) => {
+  const db = req.app.locals.db;
+  const PokerHands = db.collection("pokerHands");
+  const PokerTables = db.collection("pokerTables");
+  const { amount, handId, tableId, user } = req.body;
+
+  PokerHands.update(
+    { handId: handId },
+    {
+      $inc: {
+        pot: amount
+      }
+    }
+  ).then((success) => {
+    if (!success) {
+      res.json({ msg: "Could not update poker hands", success: false });
+      return;
+    }
+    PokerTables.update(
+      { tableId: tableId },
+      {
+        $inc: {
+          [`stacks.${user}`]: -amount
+        }
+      }
+    ).then((success) => {
+      if (!success) {
+        res.json({ msg: "Could not update stack in poker tables table", success: false });
+        return;
+      }
+      res.json({ msg: "Bet registered", success: true });
+    }).catch((err) => {
+      res.json({ msg: "Database error", success: false });
+      console.error(err);
+    })
+  }).catch((err) => {
+    res.json({ msg: "Database error", success: false });
+    console.error(err);
+  })
+});
+
 app.post("/poker/endhand", jsonParser, (req, res) => {
   const db = req.app.locals.db;
   const PokerHands = db.collection("pokerHands");
   const { handId } = req.body;
 
+  let memo;
   PokerHands.findOne({ handId }).then((doc) => {
     if (!doc) {
       res.json({ msg: "Hand does not exist", success: false });
       return;
     }
 
-    const results = doc.players.map(p => ({
-      user: p,
-      result: handEvaluator(doc.hands[p])
-    }));
+    if (fs.statSync("memo.json").isFile()) {
+      try {
+        memo = JSON.parse(fs.readFileSync("memo.json", "utf8"));
+      } catch (e) {
+        memo = {};
+      }
+    } else {
+      memo = {};
+    }
+
+    const handKeys = doc.players.map(p => {
+      doc.hands[p].sort((a, b) => b.rawValue - a.rawValue);
+      const hand = acesHighUnlessWheel(doc.hands[p]);
+      return hand.reduce((acc, x) => {
+        acc[p] = acc[p] ? acc[p] + x.value + x.suit : "" + x.value + x.suit;
+        return acc;
+      }, {});
+    });
+
+    const results = [];
+    let currPlayer;
+    for (let i = 0; i < handKeys.length; i++) {
+      currPlayer = doc.players[i];
+      if (memo[handKeys[i][currPlayer]]) {
+        results.push({
+          user: currPlayer,
+          result: memo[handKeys[i][currPlayer]]
+        });
+      } else {
+        let result = handEvaluator(doc.hands[currPlayer]);
+        memo[handKeys[i][currPlayer]] = result;
+        results.push({
+          result,
+          user: currPlayer
+        });
+        fs.writeFileSync("memo.json", JSON.stringify(memo, null, 2));
+      }
+    }
 
     const winners = compareResults(results);
 
