@@ -681,7 +681,14 @@ app.post("/poker/endhand", jsonParser, (req, res) => {
     }
 
     const handKeys = doc.players.map(p => {
-      doc.hands[p].sort((a, b) => b.rawValue - a.rawValue);
+      doc.hands[p].sort((a, b) => {
+        const diff = b.rawValue - a.rawValue;
+        if (diff === 0) {
+          return a.suit.charCodeAt(0) - b.suit.charCodeAt(0);
+        } else {
+          return diff;
+        }
+      });
       const hand = acesHighUnlessWheel(doc.hands[p]);
       return hand.reduce((acc, x) => {
         acc[p] = acc[p] ? acc[p] + x.value + x.suit : "" + x.value + x.suit;

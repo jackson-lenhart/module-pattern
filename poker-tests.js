@@ -5,8 +5,23 @@ module.exports = (({
   generateHand,
   handEvaluator,
   compareResults
-}, { handleTie }) => {
+}, { handleTie, acesHighUnlessWheel }) => {
   return {
+    testHandSort: () => {
+      const deck = generateDeck();
+      const hand = generateHand(5, deck).hand;
+      console.log("Unsorted hand", hand);
+      hand.sort((a, b) => {
+        let diff = b.rawValue - a.rawValue;
+        if (diff === 0) {
+          return a.suit.charCodeAt(0) - b.suit.charCodeAt(0);
+        } else {
+          return diff;
+        }
+      });
+      const realHand = acesHighUnlessWheel(hand);
+      console.log("Sorted hand", realHand);
+    },
     testEvaluator: () => {
       for (let i = 0; i < 10; i++) {
         console.log("RETURN FROM HAND EVALUATOR", handEvaluator(

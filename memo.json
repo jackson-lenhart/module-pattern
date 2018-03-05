@@ -20,5 +20,16 @@
       3
     ],
     "msg": "One pair, 2"
+  },
+  "Qc7h7s2dAh": {
+    "type": "PAIR",
+    "rank": 8,
+    "value": 7,
+    "kickers": [
+      14,
+      12,
+      2
+    ],
+    "msg": "One pair, 7"
   }
 }
