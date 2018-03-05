@@ -55,7 +55,6 @@ module.exports = (({
       const hand = acesHighUnlessWheel(handArr);
 
       const rawValues = hand.map(card => card.rawValue);
-      console.log("sorted raw values:", rawValues);
 
       // flush?
       const suit = hand[0].suit;
